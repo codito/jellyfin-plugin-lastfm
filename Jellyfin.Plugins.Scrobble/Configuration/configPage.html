@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Scrobble</title>
+    </head>
+    <body>
+        <div
+            id="scrobbleConfigurationPage"
+            data-role="page"
+            class="page type-interior pluginConfigurationPage scrobbleConfigurationPage"
+            data-require="emby-input,emby-button,emby-select,emby-checkbox"
+        >
+            <div data-role="content">
+                <div class="content-primary">
+                    <h1>Scrobble</h1>
+
+                    <form id="scrobbleConfigurationForm">
+                        <!--<div style="height:0; overflow: hidden;">-->
+                            <!--<input-->
+                                <!--type="text"-->
+                                <!--name="fakeusernameremembered"-->
+                                <!--tabindex="-1"-->
+                            <!--/><input-->
+                                <!--type="password"-->
+                                <!--name="fakepasswordremembered"-->
+                                <!--tabindex="-1"-->
+                            <!--/>-->
+                        <!--</div>-->
+
+                        <div class="selectContainer">
+                            <select
+                                is="emby-select"
+                                id="selectUser"
+                                name="selectUser"
+                                onchange="ScrobbleConfigurationPage.loadConfiguration(this.value);"
+                                label="Configure Scrobble for:"
+                            ></select>
+                        </div>
+                        <div></div>
+                        <br />
+                        <div id="authorizeScrobbler">
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="username">Username</label>
+                                <input id="username" name="username" type="text" is="emby-input" class="emby-input" />
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused" for="password">Password</label>
+                                <input id="password" name="password" type="password" is="emby-input" class="emby-input" />
+                                <div class="fieldDescription">You can utilize this plugin by editing a library and modifying the options for subtitle downloads.</div>
+                            </div>
+                            <button is="emby-button" type="button" id="authorizeDevice" class="raised block emby-button">
+                                Authorize device
+                            </button>
+                        </div>
+                        <div id="configureScrobbler" class="checkboxContainer hide">
+                            <label>
+                                <input is="emby-checkbox" type="checkbox" id="chkScrobble" name="chkScrobble" />
+                                <span>Send music played to scrobbler</span>
+                            </label>
+                        </div>
+                        <div>
+                            <button is="emby-button" type="submit" class="raised button-submit block">
+                                <span>${ButtonSave}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script type="text/javascript">
+                Array.prototype.remove = function() {
+                    var what,
+                        a = arguments,
+                        L = a.length,
+                        ax;
+                    while (L && this.length) {
+                        what = a[--L];
+                        while ((ax = this.indexOf(what)) !== -1) {
+                            this.splice(ax, 1);
+                        }
+                    }
+                    return this;
+                };
+                function setAuthorizationElements(page, isAuthorized) {
+                    var buttonText;
+                    if (isAuthorized) {
+                        $("#activateWithCode", page).addClass("hide");
+                        $("#authorizedDescription", page).removeClass("hide");
+                        buttonText = "Force re-authorization";
+                    } else {
+                        $("#authorizedDescription", page).addClass("hide");
+                        buttonText = "Authorize device";
+                    }
+                    // Set the auth button
+                    $("#authorizeDevice", page).text(buttonText);
+                    $("#authorizeDevice", page).removeClass("hide");
+                }
+                var ScrobbleConfigurationPage = {
+                    pluginUniqueId: "f41f8b8a-8f9b-410f-a45f-e564f0bd0ece",
+                    loadConfiguration: function(userId, page) {
+                        Dashboard.showLoadingMsg();
+                        ApiClient.getPluginConfiguration(
+                            ScrobbleConfigurationPage.pluginUniqueId
+                        ).then(function(config) {
+                            var currentUserConfig = config.UserConfigurations.filter(
+                                function(curr) {
+                                    return curr.UserId == userId;
+                                }
+                            )[0];
+                            // User doesn't have a config, so create a default one.
+                            if (!currentUserConfig) {
+                                // You don't have to put every property in here, just the ones the UI is expecting (below)
+                                currentUserConfig = {
+                                    AccessToken: null,
+                                    Scrobble: true
+                                };
+                            }
+                            // Default this to an empty array so the rendering code doesn't have to worry about it
+                            // $("#chkScrobble", page)
+                            //     .checked(currentUserConfig.Scrobble)
+                            //     .checkboxradio("refresh");
+
+                            setAuthorizationElements(
+                                page,
+                                currentUserConfig.AccessToken != null
+                            );
+                            Dashboard.hideLoadingMsg();
+                        });
+                    },
+                    populateUsers: function(users) {
+                        var html = "";
+                        for (var i = 0, length = users.length; i < length; i++) {
+                            var user = users[i];
+                            html += '<option value="' + user.Id + '">' + user.Name + "</option>";
+                        }
+                        $("#selectUser", $.mobile.activePage)
+                            .html(html)
+                            .selectmenu("refresh");
+                    }
+                };
+
+                function save(page) {
+                    // var dfd = $.Deferred();
+                    // Dashboard.showLoadingMsg();
+                    // var currentUserId = $('#selectUser', page).val();
+                    // ApiClient.getPluginConfiguration(ScrobbleConfigurationPage.pluginUniqueId).then(function (config) {
+                    //     var currentUserConfig = config.UserConfigurations.filter(function (curr) {
+                    //         return curr.UserId == currentUserId;
+                    //     })[0];
+                    //     // User doesn't have a config, so create a default one.
+                    //     if (!currentUserConfig) {
+                    //         currentUserConfig = {};
+                    //         config.UserConfigurations.push(currentUserConfig);
+                    //     }
+                    //     currentUserConfig.Scrobble = $('#chkScrobble', page).checked();
+                    //     currentUserConfig.UserId = currentUserId;
+                    //     currentUserConfig.LocationsExcluded = $('.chkScrobbleLocation:checked', page).map(function () {
+                    //         return this.getAttribute('data-location');
+                    //     }).get();
+                    //     if (currentUserConfig.UserName == '') {
+                    //         config.UserConfigurations.remove(config.UserConfigurations.indexOf(currentUserConfig));
+                    //     }
+                    //     ApiClient.updatePluginConfiguration(ScrobbleConfigurationPage.pluginUniqueId, config).then(function (result) {
+                    //         Dashboard.processPluginConfigurationUpdateResult(result);
+                    //         ApiClient.getUsers().then(function (users) {
+                    //             var currentUserId = $('#selectUser', page).val();
+                    //             ScrobbleConfigurationPage.populateUsers(users);
+                    //             $('#selectUser', page).val(currentUserId);
+                    //             ScrobbleConfigurationPage.loadConfiguration(currentUserId, page);
+                    //             Dashboard.alert('Settings saved.');
+                    //             dfd.resolve();
+                    //         });
+                    //     });
+                    // });
+                    // return dfd.promise();
+                }
+
+                $(".scrobbleConfigurationPage").on("pageinit", function() {
+                    //Dashboard.showLoadingMsg();
+                    var page = this;
+                    $("#scrobbleConfigurationForm", page).on(
+                        "submit",
+                        function() {
+                            save(page);
+                            return false;
+                        }
+                    );
+                    $("#authorizeDevice", page).on("click", function() {
+                        var currentUserId = $("#selectUser", page).val();
+                        var username = $("#username", page).val();
+                        var password = $("#password", page).val();
+                        var headers = {
+                            accept: "application/json"
+                        };
+                        var request = {
+                            url: ApiClient.getUrl(
+                                "Scrobble/Users/" + currentUserId + "/Authorize"
+                            ),
+                            dataType: "json",
+                            type: "POST",
+                            headers: headers,
+                            contentType: "application/json",
+                            data: JSON.stringify({
+                                username: username,
+                                password: password
+                            })
+                        };
+                        function handleError(result) {
+                            Dashboard.alert({
+                                message:
+                                    "An error occurred when trying to authorize device: " +
+                                    result.status +
+                                    " - " +
+                                    result.statusText
+                            });
+                        }
+                        ApiClient.fetch(request)
+                            .then(function(result) {
+                                console.log(
+                                    "Scrobble user code: " + result.session.key
+                                );
+                                $("#authorizeScrobbler", page).addClass("hide");
+                                ScrobbleConfigurationPage.loadConfiguration(currentUserId, page);
+                            })
+                            .catch(handleError);
+                    });
+                });
+
+                $(".scrobbleConfigurationPage").on("pageshow", function() {
+                    //Dashboard.showLoadingMsg();
+                    var page = this;
+                    ApiClient.getUsers().then(function(users) {
+                        ScrobbleConfigurationPage.populateUsers(users);
+                        var currentUserId = $("#selectUser", page).val();
+                        ScrobbleConfigurationPage.loadConfiguration(currentUserId, page);
+                    });
+                });
+            </script>
+        </div>
+    </body>
+</html>
